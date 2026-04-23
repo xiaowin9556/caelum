@@ -6,6 +6,8 @@ LABEL org.opencontainers.image.description="Caelum OS - The sky starts here"
 LABEL org.opencontainers.image.version="1.0"
 
 # Configurar ZRAM 4GB
+# Desabilitar repo terra-mesa problemático
+RUN rm -f /etc/yum.repos.d/terra-mesa.repo || true
 RUN echo "[zram0]" > /etc/systemd/zram-generator.conf && \
     echo "zram-size = 4096" >> /etc/systemd/zram-generator.conf && \
     echo "compression-algorithm = zstd" >> /etc/systemd/zram-generator.conf && \
