@@ -15,7 +15,7 @@ COPY assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png
 COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
 COPY assets/logo.png /usr/share/pixmaps/velaris-logo.png
 
-# Remover fcitx5 + dependências
+# Remover fcitx5 + libime juntos
 RUN rpm-ostree override remove \
     libime \
     libime-data \
@@ -46,15 +46,7 @@ RUN rpm-ostree override remove \
     kcm-fcitx5 \
     || true
 
-# Remover kate + dependências
-RUN rpm-ostree override remove \
-    kate \
-    kate-krunner-plugin \
-    kate-libs \
-    kate-plugins \
-    || true
-
-# Remover outros pacotes
+# Remover steam, lutris e outros
 RUN rpm-ostree override remove \
     lutris \
     steam \
@@ -65,6 +57,9 @@ RUN rpm-ostree override remove \
 
 # Instalar Firefox
 RUN rpm-ostree install firefox || true
+
+# Esconder kate do menu sem remover (kwrite depende dele)
+RUN echo -e "[Desktop Entry]\nHidden=true" > /usr/share/applications/org.kde.kate.desktop || true
 
 # Identidade Velaris
 RUN sed -i 's/bazzite/velaris/g' /usr/lib/os-release || true && \
