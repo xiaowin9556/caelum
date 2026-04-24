@@ -15,8 +15,10 @@ COPY assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png
 COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
 COPY assets/logo.png /usr/share/pixmaps/velaris-logo.png
 
-# Remover fcitx5 completo
+# Remover fcitx5 + dependências
 RUN rpm-ostree override remove \
+    libime \
+    libime-data \
     fcitx5 \
     fcitx5-chewing \
     fcitx5-chinese-addons \
@@ -44,7 +46,7 @@ RUN rpm-ostree override remove \
     kcm-fcitx5 \
     || true
 
-# Remover kate completo
+# Remover kate + dependências
 RUN rpm-ostree override remove \
     kate \
     kate-krunner-plugin \
@@ -85,7 +87,7 @@ RUN mkdir -p /etc/skel/.config && \
     echo "[Wallpaper]" > /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc && \
     echo "Image=file:///usr/share/wallpapers/velaris-desktop.png" >> /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
 
-# Wallpaper tela de bloqueio
+# Tela de bloqueio
 RUN echo "[Greeter][Wallpaper][org.kde.image][General]" > /etc/skel/.config/kscreenlockerrc && \
     echo "Image=file:///usr/share/wallpapers/velaris-lock.png" >> /etc/skel/.config/kscreenlockerrc
 
