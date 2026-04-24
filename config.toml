@@ -2,6 +2,3 @@
 name = "caelum"
 password = "caelum"
 groups = ["wheel"]
-
-[customizations.installer]
-disable-repo = ["terra-mesa"]
