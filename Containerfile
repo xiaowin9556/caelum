@@ -16,18 +16,16 @@ COPY assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png
 COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
 COPY assets/logo.png /usr/share/pixmaps/velaris-logo.png
 
-# ==================== Identidade Velaris (os-release) ====================
+# ==================== Identidade Velaris (os-release) - CORRIGIDO ====================
 RUN cp /usr/lib/os-release /usr/lib/os-release.bak && \
     sed -i 's/Bazzite/Velaris/gI' /usr/lib/os-release && \
     sed -i 's/bazzite/velaris/gI' /usr/lib/os-release && \
     sed -i '/^PRETTY_NAME=/d' /usr/lib/os-release && \
-    cat >> /usr/lib/os-release << 'EOF'
-PRETTY_NAME="Velaris 1.0"
-NAME="Velaris"
-VARIANT="KDE Plasma"
-EOF
+    echo 'PRETTY_NAME="Velaris 1.0"' >> /usr/lib/os-release && \
+    echo 'NAME="Velaris"' >> /usr/lib/os-release && \
+    echo 'VARIANT="KDE Plasma"' >> /usr/lib/os-release
 
-# ==================== Remover vestígios do Bazzite (apenas os arquivos de branding) ====================
+# ==================== Remover vestígios do Bazzite (branding) ====================
 RUN rm -f /etc/profile.d/bazzite-*.sh \
     /usr/share/ublue-os/motd/*.md \
     /usr/share/applications/bazzite-*.desktop || true
