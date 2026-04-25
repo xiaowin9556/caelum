@@ -4,19 +4,21 @@ LABEL org.opencontainers.image.title="Velaris"
 LABEL org.opencontainers.image.description="Velaris OS"
 LABEL org.opencontainers.image.version="1.0"
 
-# ==================== ZRAM 4GB ====================
+# ZRAM 4GB
 RUN echo "[zram0]" > /etc/systemd/zram-generator.conf && \
     echo "zram-size = 4096" >> /etc/systemd/zram-generator.conf && \
     echo "compression-algorithm = zstd" >> /etc/systemd/zram-generator.conf && \
     echo "swap-priority = 100" >> /etc/systemd/zram-generator.conf
 
-# ==================== Assets ====================
+# Assets
 COPY assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png
 COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
 COPY assets/logo.png /usr/share/pixmaps/velaris-logo.png
 
-# ==================== Remover fcitx5 (input methods) ====================
+# Remover fcitx5 + libime juntos
 RUN rpm-ostree override remove \
+    libime \
+    libime-data \
     fcitx5 \
     fcitx5-chewing \
     fcitx5-chinese-addons \
@@ -42,76 +44,56 @@ RUN rpm-ostree override remove \
     fcitx5-sayura \
     fcitx5-unikey \
     kcm-fcitx5 \
-    libime \
-    libime-data \
     || true
 
-# ==================== Remover Steam, Lutris e pacotes relacionados ====================
-# Não removemos steamdeck-kde-presets-desktop para evitar quebrar o Plasma
+# Remover steam, lutris e outros
 RUN rpm-ostree override remove \
     lutris \
     steam \
     steam-devices \
+    steamdeck-kde-presets-desktop \
     input-remapper \
     || true
 
-# ==================== Instalar Firefox ====================
+# Instalar Firefox
 RUN rpm-ostree install firefox || true
 
-# ==================== Esconder Kate do menu (sem remover) ====================
-RUN mkdir -p /usr/share/applications && \
-    echo -e "[Desktop Entry]\nType=Application\nHidden=true" > /usr/share/applications/org.kde.kate.desktop
+# Esconder kate do menu sem remover (kwrite depende dele)
+RUN echo -e "[Desktop Entry]\nHidden=true" > /usr/share/applications/org.kde.kate.desktop || true
 
-# ==================== Identidade Velaris (os-release) ====================
-RUN cp /usr/lib/os-release /usr/lib/os-release.bak && \
-    sed -i 's/Bazzite/Velaris/gI' /usr/lib/os-release && \
-    sed -i 's/bazzite/velaris/gI' /usr/lib/os-release && \
-    sed -i '/^PRETTY_NAME=/d' /usr/lib/os-release && \
+# Identidade Velaris
+RUN sed -i 's/bazzite/velaris/g' /usr/lib/os-release || true && \
+    sed -i 's/Bazzite/Velaris/g' /usr/lib/os-release || true && \
     echo 'PRETTY_NAME="Velaris 1.0"' >> /usr/lib/os-release && \
-    echo 'NAME="Velaris"' >> /usr/lib/os-release && \
-    echo 'VARIANT="KDE Plasma"' >> /usr/lib/os-release || true
+    echo 'NAME="Velaris"' >> /usr/lib/os-release
 
-# ==================== Remover arquivos/menus do Bazzite ====================
-RUN rm -f /etc/profile.d/bazzite-*.sh \
-    /usr/share/ublue-os/motd/*.md \
-    /usr/share/applications/bazzite-*.desktop \
-    /usr/share/applications/webapp-manager.desktop \
-    /usr/share/applications/bold-brew.desktop \
-    /usr/share/applications/discourse.desktop || true
+# Remover arquivos do Bazzite
+RUN rm -f /etc/profile.d/bazzite-*.sh || true && \
+    rm -f /usr/share/ublue-os/motd/*.md || true && \
+    rm -f /usr/share/applications/bazzite-portal.desktop || true && \
+    rm -f /usr/share/applications/bazzite-documentation.desktop || true && \
+    rm -f /usr/share/applications/bazzite-update.desktop || true && \
+    rm -f /usr/share/applications/webapp-manager.desktop || true && \
+    rm -f /usr/share/applications/bold-brew.desktop || true && \
+    rm -f /usr/share/applications/discourse.desktop || true
 
-# ==================== Configuração padrão de Wallpaper (Desktop) ====================
+# Wallpaper desktop
 RUN mkdir -p /etc/skel/.config && \
-    cat > /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc << 'EOF'
-[Containments][1]
-activityId=
-lastScreen=0
-plugin=org.kde.plasma.desktop
-type=Desktop
+    echo "[Wallpaper]" > /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc && \
+    echo "Image=file:///usr/share/wallpapers/velaris-desktop.png" >> /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
 
-[Containments][1][Wallpaper][org.kde.image][General]
-Image=file:///usr/share/wallpapers/velaris-desktop.png
-EOF
+# Tela de bloqueio
+RUN echo "[Greeter][Wallpaper][org.kde.image][General]" > /etc/skel/.config/kscreenlockerrc && \
+    echo "Image=file:///usr/share/wallpapers/velaris-lock.png" >> /etc/skel/.config/kscreenlockerrc
 
-# ==================== Tela de bloqueio ====================
-RUN mkdir -p /etc/skel/.config && \
-    cat > /etc/skel/.config/kscreenlockerrc << 'EOF'
-[Greeter][Wallpaper][org.kde.image][General]
-Image=file:///usr/share/wallpapers/velaris-lock.png
-EOF
+# Logo menu iniciar
+RUN cp /usr/share/pixmaps/velaris-logo.png /usr/share/pixmaps/start-here.png || true
 
-# ==================== Logo do menu iniciar (start-here) ====================
-RUN cp -f /usr/share/pixmaps/velaris-logo.png /usr/share/pixmaps/start-here.png || true
-
-# ==================== Fastfetch ====================
+# Fastfetch
 RUN mkdir -p /etc/fastfetch && \
-    cat > /etc/fastfetch/config.jsonc << 'EOF'
-{
-  "logo": {
-    "source": "/usr/share/pixmaps/velaris-logo.png",
-    "type": "kitty"
-  },
-  "display": {
-    "separator": " "
-  }
-}
-EOF
+    echo '{"logo": {"source": "/usr/share/pixmaps/velaris-logo.png", "type": "kitty"}, "display": {"separator": " "}}' \
+    > /etc/fastfetch/config.jsonc
+
+# Limpar cache
+RUN rpm-ostree cleanup -m && \
+    rm -rf /var/cache/* /tmp/* || true
