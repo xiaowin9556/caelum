@@ -16,10 +16,8 @@ COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
 COPY assets/logo.png /usr/share/pixmaps/velaris-logo.png
 
 # Identidade Velaris
-RUN sed -i 's/bazzite/velaris/g' /usr/lib/os-release || true && \
-    sed -i 's/Bazzite/Velaris/g' /usr/lib/os-release || true && \
-    echo 'PRETTY_NAME="Velaris 1.0"' >> /usr/lib/os-release && \
-    echo 'NAME="Velaris"' >> /usr/lib/os-release
+RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Velaris 1.0"/' /usr/lib/os-release || true && \
+    sed -i 's/^NAME=.*/NAME="Velaris"/' /usr/lib/os-release || true
 
 # Wallpaper desktop
 RUN mkdir -p /etc/skel/.config && \
