@@ -1,5 +1,6 @@
 FROM ghcr.io/ublue-os/bazzite:latest
-
+# Remover repo problemático
+RUN rm -f /etc/yum.repos.d/terra-mesa.repo || true
 LABEL org.opencontainers.image.title="Velaris"
 LABEL org.opencontainers.image.description="Velaris OS"
 LABEL org.opencontainers.image.version="1.0"
