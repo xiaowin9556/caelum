@@ -1,40 +1,39 @@
 FROM ghcr.io/ublue-os/bazzite:latest
 
 LABEL org.opencontainers.image.title="Velaris"
-LABEL org.opencontainers.image.description="Velaris OS - Personalizado"
+LABEL org.opencontainers.image.description="Velaris OS"
 LABEL org.opencontainers.image.version="1.0"
 
-# 1. Performance: Configuração de ZRAM (4GB)
-RUN mkdir -p /usr/lib/systemd/zram-generator.conf.d && \
-    echo -e "[zram0]\nzram-size = 4096\ncompression-algorithm = zstd\nswap-priority = 100" \
-    > /usr/lib/systemd/zram-generator.conf.d/99-velaris.conf
+# ZRAM 4GB
+RUN echo "[zram0]" > /etc/systemd/zram-generator.conf && \
+    echo "zram-size = 4096" >> /etc/systemd/zram-generator.conf && \
+    echo "compression-algorithm = zstd" >> /etc/systemd/zram-generator.conf && \
+    echo "swap-priority = 100" >> /etc/systemd/zram-generator.conf
 
-# 2. Importar arquivos de personalização
-# Certifique-se de que a pasta 'assets' existe com as imagens
-COPY assets/ /tmp/assets/
+# Assets
+COPY assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png
+COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
+COPY assets/logo.png /usr/share/pixmaps/velaris-logo.png
 
-# 3. Identidade do Sistema (os-release)
-RUN sed -i 's/Bazzite/Velaris/g' /usr/lib/os-release && \
-    sed -i 's/bazzite/velaris/g' /usr/lib/os-release
+# Identidade Velaris
+RUN sed -i 's/bazzite/velaris/g' /usr/lib/os-release || true && \
+    sed -i 's/Bazzite/Velaris/g' /usr/lib/os-release || true && \
+    echo 'PRETTY_NAME="Velaris 1.0"' >> /usr/lib/os-release && \
+    echo 'NAME="Velaris"' >> /usr/lib/os-release
 
-# 4. Personalização Visual (Wallpapers e Logos)
-RUN mkdir -p /usr/share/wallpapers /usr/share/pixmaps && \
-    cp /tmp/assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png || true && \
-    cp /tmp/assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png || true && \
-    cp /tmp/assets/logo.png /usr/share/pixmaps/velaris-logo.png || true && \
-    cp /usr/share/pixmaps/velaris-logo.png /usr/share/pixmaps/start-here.png || true
+# Wallpaper desktop
+RUN mkdir -p /etc/skel/.config && \
+    echo "[Wallpaper]" > /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc && \
+    echo "Image=file:///usr/share/wallpapers/velaris-desktop.png" >> /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
 
-# 5. Configurações de Usuário (Desktop, Tela de Bloqueio e Fastfetch)
-RUN mkdir -p /usr/etc/skel/.config /usr/etc/fastfetch && \
-    # Wallpaper do Plasma
-    echo -e "[Wallpaper]\nImage=file:///usr/share/wallpapers/velaris-desktop.png" \
-    > /usr/etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc && \
-    # Wallpaper da Tela de Bloqueio
-    echo -e "[Greeter][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/velaris-lock.png" \
-    > /usr/etc/skel/.config/kscreenlockerrc && \
-    # Logotipo no Fastfetch
+# Tela de bloqueio
+RUN echo "[Greeter][Wallpaper][org.kde.image][General]" > /etc/skel/.config/kscreenlockerrc && \
+    echo "Image=file:///usr/share/wallpapers/velaris-lock.png" >> /etc/skel/.config/kscreenlockerrc
+
+# Logo menu iniciar
+RUN cp /usr/share/pixmaps/velaris-logo.png /usr/share/pixmaps/start-here.png || true
+
+# Fastfetch
+RUN mkdir -p /etc/fastfetch && \
     echo '{"logo": {"source": "/usr/share/pixmaps/velaris-logo.png", "type": "kitty"}, "display": {"separator": " "}}' \
-    > /usr/etc/fastfetch/config.jsonc
-
-# 6. Limpeza de arquivos temporários da Build
-RUN rm -rf /tmp/assets /var/cache/*
+    > /etc/fastfetch/config.jsonc
