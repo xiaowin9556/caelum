@@ -33,3 +33,7 @@ RUN printf '[Greeter][Wallpaper][org.kde.image][General]\nImage=file:///usr/shar
 # Limpar cache
 RUN rpm-ostree cleanup -m && \
     rm -rf /var/cache/* /tmp/* || true
+
+# Nome no os-release (mantém ID do Bazzite)
+RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Velaris 1.0"/' /usr/lib/os-release || true && \
+    sed -i 's/^NAME=.*/NAME="Velaris"/' /usr/lib/os-release || true
