@@ -4,104 +4,76 @@ LABEL org.opencontainers.image.title="Velaris"
 LABEL org.opencontainers.image.description="Velaris OS"
 LABEL org.opencontainers.image.version="1.0"
 
-# ==================== ZRAM 4GB ====================
-RUN echo "[zram0]" > /etc/systemd/zram-generator.conf && \
-    echo "zram-size = 4096" >> /etc/systemd/zram-generator.conf && \
-    echo "compression-algorithm = zstd" >> /etc/systemd/zram-generator.conf && \
-    echo "swap-priority = 100" >> /etc/systemd/zram-generator.conf
+# 1. Configuração de ZRAM (Modo Robusto)
+RUN mkdir -p /usr/lib/systemd/zram-generator.conf.d && \
+    echo -e "[zram0]\nzram-size = 4096\ncompression-algorithm = zstd\nswap-priority = 100" \
+    > /usr/lib/systemd/zram-generator.conf.d/99-velaris.conf
 
-# ==================== Assets ====================
-COPY assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png
-COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
-COPY assets/logo.png /usr/share/pixmaps/velaris-logo.png
+# 2. Preparação de Arquivos Temporários
+# Certifique-se de que as pastas 'assets' e 'scripts' existem no seu repositório
+COPY assets/ /tmp/assets/
+COPY scripts/ /tmp/scripts/
 
-# ==================== Remover fcitx5 ====================
-RUN rpm-ostree override remove \
-    fcitx5 fcitx5-chewing fcitx5-chinese-addons fcitx5-chinese-addons-data \
-    fcitx5-configtool fcitx5-data fcitx5-gtk fcitx5-gtk2 fcitx5-gtk3 \
-    fcitx5-gtk4 fcitx5-hangul fcitx5-libs fcitx5-libthai fcitx5-lua \
-    fcitx5-m17n fcitx5-mozc fcitx5-qt fcitx5-qt5 fcitx5-qt6 \
-    fcitx5-qt-libfcitx5qt6widgets fcitx5-qt-libfcitx5qtdbus fcitx5-qt-qt6gui \
-    fcitx5-sayura fcitx5-unikey kcm-fcitx5 libime libime-data \
-    || true
+# 3. Gestão de Pacotes (Remoção Dinâmica + Instalação)
+# Filtra pacotes que podem não existir na base para evitar erro 'exit code 1'
+RUN PACKAGES_TO_REMOVE="libime libime-data fcitx5 fcitx5-chewing fcitx5-chinese-addons \
+    fcitx5-chinese-addons-data fcitx5-configtool fcitx5-data fcitx5-gtk \
+    fcitx5-gtk2 fcitx5-gtk3 fcitx5-gtk4 fcitx5-hangul fcitx5-libs \
+    fcitx5-libthai fcitx5-lua fcitx5-m17n fcitx5-mozc fcitx5-qt \
+    fcitx5-qt5 fcitx5-qt6 fcitx5-qt-libfcitx5qt6widgets \
+    fcitx5-qt-libfcitx5qtdbus fcitx5-qt-qt6gui fcitx5-sayura \
+    fcitx5-unikey kcm-fcitx5 lutris steam steam-devices \
+    steamdeck-kde-presets-desktop input-remapper" && \
+    REMOVE_LIST="" && \
+    for pkg in $PACKAGES_TO_REMOVE; do \
+        if rpm -q $pkg >/dev/null 2>&1; then \
+            REMOVE_LIST="$REMOVE_LIST $pkg"; \
+        fi; \
+    done && \
+    if [ -n "$REMOVE_LIST" ]; then \
+        rpm-ostree override remove $REMOVE_LIST; \
+    fi && \
+    rpm-ostree install firefox && \
+    rpm-ostree cleanup -m
 
-# ==================== Remover Steam, Lutris e outros ====================
-RUN rpm-ostree override remove \
-    lutris \
-    steam \
-    steam-devices \
-    input-remapper \
-    || true
+# 4. Identidade Visual e Wallpapers
+RUN mkdir -p /usr/share/wallpapers /usr/share/pixmaps /usr/share/applications && \
+    [ -f /tmp/assets/wallpaper-desktop.png ] && cp /tmp/assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png || true && \
+    [ -f /tmp/assets/wallpaper-lock.png ] && cp /tmp/assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png || true && \
+    [ -f /tmp/assets/logo.png ] && cp /tmp/assets/logo.png /usr/share/pixmaps/velaris-logo.png || true && \
+    cp /usr/share/pixmaps/velaris-logo.png /usr/share/pixmaps/start-here.png || true && \
+    # Patch no os-release para mudar o nome da distro
+    sed -i 's/Bazzite/Velaris/g' /usr/lib/os-release && \
+    sed -i 's/bazzite/velaris/g' /usr/lib/os-release
 
-# ==================== Instalar Firefox ====================
-RUN rpm-ostree install firefox || true
+# 5. Configurações de Interface (Skel e Fastfetch)
+RUN mkdir -p /usr/etc/skel/.config /usr/etc/fastfetch && \
+    # Wallpaper Plasma
+    echo -e "[Wallpaper]\nImage=file:///usr/share/wallpapers/velaris-desktop.png" \
+    > /usr/etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc && \
+    # Lockscreen
+    echo -e "[Greeter][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/velaris-lock.png" \
+    > /usr/etc/skel/.config/kscreenlockerrc && \
+    # Config Fastfetch
+    echo '{"logo": {"source": "/usr/share/pixmaps/velaris-logo.png", "type": "kitty"}, "display": {"separator": " "}}' \
+    > /usr/etc/fastfetch/config.jsonc
 
-# ==================== Esconder Kate do menu ====================
-RUN mkdir -p /usr/share/applications && \
-    cat > /usr/share/applications/org.kde.kate.desktop << 'EOF'
-[Desktop Entry]
-Type=Application
-Hidden=true
-EOF
+# 6. Scripts e Permissões
+RUN mkdir -p /usr/local/bin && \
+    if [ -f /tmp/scripts/game-mode.sh ]; then \
+        cp /tmp/scripts/game-mode.sh /usr/local/bin/velaris-game-mode && \
+        chmod +x /usr/local/bin/velaris-game-mode; \
+    fi
 
-# ==================== Identidade Velaris (os-release) ====================
-RUN cp /usr/lib/os-release /usr/lib/os-release.bak && \
-    sed -i 's/Bazzite/Velaris/gI' /usr/lib/os-release && \
-    sed -i 's/bazzite/velaris/gI' /usr/lib/os-release && \
-    sed -i '/^PRETTY_NAME=/d' /usr/lib/os-release && \
-    echo 'PRETTY_NAME="Velaris 1.0"' >> /usr/lib/os-release && \
-    echo 'NAME="Velaris"' >> /usr/lib/os-release && \
-    echo 'VARIANT="KDE Plasma"' >> /usr/lib/os-release || true
-
-# ==================== Remover arquivos do Bazzite ====================
-RUN rm -f /etc/profile.d/bazzite-*.sh \
-    /usr/share/ublue-os/motd/*.md \
-    /usr/share/applications/bazzite-*.desktop \
-    /usr/share/applications/webapp-manager.desktop \
-    /usr/share/applications/bold-brew.desktop \
-    /usr/share/applications/discourse.desktop || true
-
-# ==================== Wallpaper Desktop (Plasma) ====================
-RUN mkdir -p /etc/skel/.config && \
-    cat > /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc << 'EOF'
-[Containments][1]
-activityId=
-lastScreen=0
-plugin=org.kde.plasma.desktop
-type=Desktop
-
-[Containments][1][Wallpaper][org.kde.image][General]
-Image=file:///usr/share/wallpapers/velaris-desktop.png
-EOF
-
-# ==================== Tela de Bloqueio ====================
-RUN mkdir -p /etc/skel/.config && \
-    cat > /etc/skel/.config/kscreenlockerrc << 'EOF'
-[Greeter][Wallpaper][org.kde.image][General]
-Image=file:///usr/share/wallpapers/velaris-lock.png
-EOF
-
-# ==================== Logo do Menu Iniciar ====================
-RUN cp -f /usr/share/pixmaps/velaris-logo.png /usr/share/pixmaps/start-here.png || true
-
-# ==================== Fastfetch ====================
-RUN mkdir -p /etc/fastfetch && \
-    cat > /etc/fastfetch/config.jsonc << 'EOF'
-{
-  "logo": {
-    "source": "/usr/share/pixmaps/velaris-logo.png",
-    "type": "kitty"
-  },
-  "display": {
-    "separator": " "
-  }
-}
-EOF
-
-# ==================== Game Mode ====================
-COPY scripts/game-mode.sh /usr/local/bin/velaris-game-mode
-RUN chmod +x /usr/local/bin/velaris-game-mode
-
-# ==================== Limpeza ====================
-RUN rpm-ostree cleanup -m && \
-    rm -rf /var/cache/* /tmp/* /var/tmp/* || true
+# 7. Limpeza de Bloatware do Bazzite e Ocultar Apps
+RUN echo -e "[Desktop Entry]\nHidden=true" > /usr/share/applications/org.kde.kate.desktop && \
+    # Remove ícones indesejados no menu
+    rm -f /usr/share/applications/bazzite-portal.desktop \
+         /usr/share/applications/bazzite-documentation.desktop \
+         /usr/share/applications/bazzite-update.desktop \
+         /usr/share/applications/webapp-manager.desktop \
+         /usr/share/applications/bold-brew.desktop \
+         /usr/share/applications/discourse.desktop \
+         /usr/etc/profile.d/bazzite-*.sh || true && \
+    # Limpeza final de arquivos temporários da build
+    rm -rf /tmp/assets /tmp/scripts /var/cache/*
