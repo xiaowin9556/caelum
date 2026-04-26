@@ -17,11 +17,6 @@ RUN echo "[zram0]" > /etc/systemd/zram-generator.conf && \
 COPY assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png
 COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
 
-# Pular setup/OOBE
-RUN mkdir -p /etc/skel/.config && \
-    echo "[General]" > /etc/skel/.config/plasma-welcomerc && \
-    echo "ShouldShowOnStartup=false" >> /etc/skel/.config/plasma-welcomerc
-
 # Wallpaper desktop
 RUN printf '[Wallpaper]\nImage=file:///usr/share/wallpapers/velaris-desktop.png\n' \
     > /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
