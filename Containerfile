@@ -1,34 +1,26 @@
-FROM ghcr.io/ublue-os/bazzite:latest
+FROM quay.io/fedora/fedora-kinoite:43
 
 LABEL org.opencontainers.image.title="Velaris"
 LABEL org.opencontainers.image.description="Velaris OS"
 LABEL org.opencontainers.image.version="1.0"
 
-# Remover repo problemático
-RUN rm -f /etc/yum.repos.d/terra-mesa.repo || true
-
-# ZRAM 4GB
-RUN echo "[zram0]" > /etc/systemd/zram-generator.conf && \
-    echo "zram-size = 4096" >> /etc/systemd/zram-generator.conf && \
-    echo "compression-algorithm = zstd" >> /etc/systemd/zram-generator.conf && \
-    echo "swap-priority = 100" >> /etc/systemd/zram-generator.conf
-
 # Assets
 COPY assets/wallpaper-desktop.png /usr/share/wallpapers/velaris-desktop.png
 COPY assets/wallpaper-lock.png /usr/share/wallpapers/velaris-lock.png
+COPY assets/logo.png /usr/share/pixmaps/velaris-logo.png
+
+# Identidade Velaris
+RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Velaris 1.0"/' /usr/lib/os-release || true && \
+    sed -i 's/^NAME=.*/NAME="Velaris"/' /usr/lib/os-release || true
 
 # Wallpaper desktop
-RUN printf '[Wallpaper]\nImage=file:///usr/share/wallpapers/velaris-desktop.png\n' \
+RUN mkdir -p /etc/skel/.config && \
+    printf '[Wallpaper]\nImage=file:///usr/share/wallpapers/velaris-desktop.png\n' \
     > /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
 
 # Tela de bloqueio
 RUN printf '[Greeter][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/velaris-lock.png\n' \
     > /etc/skel/.config/kscreenlockerrc
 
-# Limpar cache
-RUN rpm-ostree cleanup -m && \
-    rm -rf /var/cache/* /tmp/* || true
-
-# Nome no os-release (mantém ID do Bazzite)
-RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Velaris 1.0"/' /usr/lib/os-release || true && \
-    sed -i 's/^NAME=.*/NAME="Velaris"/' /usr/lib/os-release || true
+# Logo menu iniciar
+RUN cp /usr/share/pixmaps/velaris-logo.png /usr/share/pixmaps/start-here.png || true
